@@ -135,6 +135,8 @@ void setup() {
   Serial.begin(SERIAL_BAUD);
   delay(150);
 
+  Serial.print(F("[BOOT] Firmware Version: "));
+  Serial.println(FIRMWARE_VERSION);
   Serial.println(F("[BOOT] Arduino WeightSensor starting"));
   Serial.print(F("[BOOT] HX711 pins DT="));
   Serial.print(HX711_DT_PIN);
@@ -189,7 +191,6 @@ void loop() {
     } else {
       latestWeight = 0.0f;
     }
-    latestWeight = 55;
     
     if (millis() - lastTransmitAt >= TX_INTERVAL_MS) {
       lastTransmitAt = millis();
