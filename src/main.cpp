@@ -11,6 +11,7 @@ constexpr uint8_t ESP32_I2C_ADDRESS = 0x42;
 constexpr uint8_t I2C_CMD_TARE_RESET = 0xA5;
 
 constexpr unsigned long TX_INTERVAL_MS = 500;
+constexpr unsigned long ERROR_LOG_INTERVAL_MS = 5000;
 constexpr uint32_t SERIAL_BAUD = 115200;
 constexpr uint32_t EEPROM_MAGIC = 0x57475331UL;
 constexpr int EEPROM_ADDR = 0;
@@ -38,6 +39,7 @@ volatile long pendingOffset = 0L;
 float latestWeight = 0.0f;
 long latestRaw = 0L;
 unsigned long lastTransmitAt = 0;
+unsigned long lastReadErrorLogAt = 0;
 
 void loadCalibrationFromEeprom() {
   CalibrationData stored{};
@@ -78,13 +80,16 @@ void applyCalibrationAndTare(float scale, long offset) {
 
   weightSensor.set_scale(scale);
   weightSensor.set_offset(offset);
-  weightSensor.tare();
-
-  Serial.print(F("[HX711] Applied scale="));
-  Serial.print(scale, 6);
-  Serial.print(F(" offset="));
-  Serial.print(offset);
-  Serial.println(F(" and tare completed"));
+  if (weightSensor.is_ready()) {
+    weightSensor.tare();
+    Serial.print(F("[HX711] Applied scale="));
+    Serial.print(scale, 6);
+    Serial.print(F(" offset="));
+    Serial.print(offset);
+    Serial.println(F(" and tare completed"));
+  } else {
+    Serial.println(F("[HX711] Applied calibration but sensor not ready for tare"));
+  }
 }
 
 void onI2cReceive(int byteCount) {
@@ -204,6 +209,12 @@ void loop() {
       Serial.print(latestRaw);
       Serial.print(F(" status="));
       Serial.println(txStatus);
+    }
+  }
+  else {
+    if (millis() - lastReadErrorLogAt >= ERROR_LOG_INTERVAL_MS) {
+      lastReadErrorLogAt = millis();
+      Serial.println(F("[ERROR] HX711 not ready for reading"));
     }
   }
 
